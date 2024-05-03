@@ -1,22 +1,24 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import Home from './screens/home'
+import { NavigationContainer } from '@react-navigation/native'
+import Home from './screens/Home'
+import Quiz from './screens/Quiz'
+import Result from './screens/Result'
+import MyStack from './navigation'
 
 const App = () => {
   return (
-    <View style={styles.container}>
-      <Home /> 
-    </View>
+      <NavigationContainer>
+        <MyStack />
+      </NavigationContainer>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    paddingTop: 40,
+    paddingHorizontal: 16
+  }
 })
 
 export default App 
