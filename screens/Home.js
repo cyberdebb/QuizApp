@@ -31,7 +31,8 @@ const styles = StyleSheet.create({
   container:{
     paddingTop: 40,
     paddingHorizontal: 20,
-    height: '100%'
+    height: '100%',
+    backgroundColor: '#cce8f1'
   },
   banner:{
     height: 300,

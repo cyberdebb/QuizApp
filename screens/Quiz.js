@@ -1,55 +1,98 @@
 import React, { useEffect, useState } from 'react'
-import { TouchableOpacity, StyleSheet, Text, View } from 'react-native'
+import { TouchableOpacity, StyleSheet, Text, View, Alert } from 'react-native'
 import PropTypes from 'prop-types'
 
 const Quiz = ({ navigation }) => {
-  const [questions, setQuestions] = useState();
-  const[ques, setQues] = useState(0)
-  const getQuiz = async() => {
-    const url = 'https://opentdb.com/api.php?amount=10&type=multiple'
-    const res = await fetch(url)
-    const data = await res.json()
-    setQuestions(data.results)
+  const [questions, setQuestions] = useState([])
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [sessionToken, setSessionToken] = useState('')
+  const [correctAnswers, setCorrectAnswers] = useState(0)
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+  const [feedbackColor, setFeedbackColor] = useState('')
+
+  const getSessionToken = async () => {
+    const tokenResponse = await fetch('https://opentdb.com/api_token.php?command=request')
+    const tokenData = await tokenResponse.json()
+    if (tokenData.response_code === 0) {
+      setSessionToken(tokenData.token)
+    }
   }
 
-  useEffect(()=>{
-    getQuiz()
-  },[])
+  const getQuiz = async () => {
+    if (!sessionToken) return 
+    const url = `https://opentdb.com/api.php?amount=5&type=multiple&token=${sessionToken}`
+    const res = await fetch(url)
+    const data = await res.json()
+    const questionsWithShuffledOptions = data.results.map((question) => ({
+      ...question,
+      all_answers: shuffle([...question.incorrect_answers, question.correct_answer])
+    }))
+    setQuestions(questionsWithShuffledOptions)
+  }
 
+  useEffect(() => {
+    getSessionToken()
+  }, [])
+
+  useEffect(() => {
+    if (sessionToken) {
+      getQuiz()
+    }
+  }, [sessionToken])
+
+  const shuffle = (array) => {
+    for (let i = array.length - 1 ; i > 0 ; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array
+  }
+
+  const handleAnswer = (answer) => {
+    const correctAnswer = questions[currentQuestionIndex].correct_answer;
+  
+    if (answer === correctAnswer) {
+      setFeedbackMessage('Você acertou!')
+      setFeedbackColor('green')
+    } else {
+      setFeedbackMessage(`Você errou! A resposta certa era: ${correctAnswer}`)
+      setFeedbackColor('red')
+    }
+  
+    setTimeout(() => {
+      nextQuestion();
+    }, 2000); // 2 segundos
+  }
+  
+  const nextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setFeedbackMessage('');
+    } else {
+      navigation.navigate('Result', { score:correctAnswers, total:questions.length });
+    }
+  }
+  
   return (
     <View style={styles.container}>
-      {questions && (
+      {questions.length > 0 && (
         <View style={styles.parent}>
           <View style={styles.top}>
-            <Text style={styles.question}>Pergunta muito boa</Text>
+            <Text style={styles.question}>{questions[currentQuestionIndex].question}</Text>
           </View>
           <View style={styles.options}>
-            <TouchableOpacity style={styles.optionButton}>
-              <Text style={styles.option}>Opcao 1</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.optionButton}>
-              <Text style={styles.option}>Opcao 2</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.optionButton}>
-              <Text style={styles.option}>Opcao 3</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.optionButton}>
-              <Text style={styles.option}>Opcao 4</Text>
-            </TouchableOpacity>
+            {questions[currentQuestionIndex].all_answers.map((option, index) => (
+              <TouchableOpacity key={index} style={styles.optionButton} onPress={() => handleAnswer(option)}>
+                <Text style={styles.option}>{option}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-          <View style={styles.bottom}>
-            <TouchableOpacity style={styles.button}>
-              <Text style={styles.buttonText}>SKIP</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.button}>
-              <Text style={styles.buttonText}>NEXT</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={[styles.feedbackText, { color:feedbackColor }]}>{feedbackMessage}</Text> 
         </View>
       )}
     </View>
   )
-}
+}  
 
 Quiz.propTypes = {
   navigation: PropTypes.shape({
@@ -58,12 +101,13 @@ Quiz.propTypes = {
 }
 
 const styles = StyleSheet.create({
-  container:{
+  container: {
     paddingTop: 40,
     paddingHorizontal: 20,
-    height: '100%'
+    height: '100%',
+    backgroundColor: '#cce8f1'
   },
-  top:{
+ top:{
     marginVertical: 16
   },
   options:{
@@ -95,7 +139,7 @@ const styles = StyleSheet.create({
   },
   option:{
     fontSize: 18,
-    fontWeight:'400',
+    fontWeight:'400'
   },
   optionButton:{
     paddingVertical: 12,
@@ -106,6 +150,12 @@ const styles = StyleSheet.create({
   },
   parent:{
     height: '100%'
+  },
+  feedbackText: {
+    fontSize: 18,
+    color: 'red',
+    textAlign: 'center',
+    marginTop: 20
   }
 })
 
